@@ -1,6 +1,7 @@
-from flask import render_template
+from flask import flash, redirect, render_template, url_for
+from flask_login import login_required, login_user, logout_user
 
-from src import app, db
+from src import app, lm
 from src.models.forms import LoginForm
 from src.models.tables import User
 
@@ -11,14 +12,31 @@ def index():
     return render_template("index.html")
 
 
+@lm.user_loader
+def load_user(user_id):
+    return User.query.filter_by(id=user_id).first()
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     form = LoginForm()
     if form.validate_on_submit():
-        print(form.username.data)
-    else:
-        print(form.errors)
+        user = User.query.filter_by(username=form.username.data).first()
+        if user and user.password == form.password.data:
+            login_user(user)
+            flash("Logged in.")
+            return redirect(url_for("index"))
+        else:
+            flash("Invalid Login.")
     return render_template("login.html", form=form)
+
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    flash("Logged out")
+    return redirect("index")
 
 
 # @app.route("/teste")
